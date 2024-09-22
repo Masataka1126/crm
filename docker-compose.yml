@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: app
+    build:
+      context: ./backend
+      dockerfile: docker/app/Dockerfile
+    working_dir: /var/www/src
+    depends_on:
+      - db
+    volumes:
+      - type: bind
+        source: ./backend/src
+        target: /var/www/src
+  web:
+    container_name: web
+    build:
+      context: ./backend
+      dockerfile: docker/web/Dockerfile
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - app
+    volumes:
+      - type: bind
+        source: ./backend/docker/web/default.conf
+        target: /etc/nginx/conf.d/default.conf
+      - type: bind
+        source: ./backend/docker/web/ssl
+        target: /etc/nginx/ssl
+      - type: bind
+        source: ./backend/src
+        target: /var/www/src
+  db:
+    container_name: db
+    build:
+      context: ./backend
+      dockerfile: docker/db/Dockerfile
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: crm
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      TZ: Asia/Tokyo
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/mysql
+      - type: bind
+        source: ./backend/docker/db/my.conf
+        target: /etc/my.conf
+      - type: bind
+        source: ./backend/docker/db/init.sql
+        target: /docker-entrypoint-initdb.d/init.sql
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - type: bind
+        source: ./frontend
+        target: /app
+    depends_on:
+      - app
+volumes:
+  db:
